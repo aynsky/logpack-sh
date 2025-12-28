@@ -18,7 +18,7 @@ size_threshold="" # Size threshold in KB for size  filter
 ### Filter parameters for time
 time_threshold="" # Time threshold in days for time filter
 
-### Filter parameters for keywordkeyword       
+### Filter parameters for keyword       
 keyword=""        # Keyword for keyword filter
 
 USE_CONFIG_MODE=false  # Set to true to use config mode, false for interactive/manual mode
@@ -48,7 +48,9 @@ check_deps() {  # Check for required commands
 }
 
 print_menu() { # Print interactive menu
-    echo -e "${CYAN} Log Archiving Tool - Interactive Mode ${NC}"
+    echo ""
+    echo -e "${YELLOW} Log Archiving Tool - Interactive Mode ${NC}"
+    echo ""
     echo "1) Archive logs larger than a specified size"
     echo "2) Archive logs modified within a specified time frame"
     echo "3) Archive logs containing a specific keyword"
@@ -67,76 +69,93 @@ check_dirs(){ # Check if log directory exists and is accessible
     fi
 }
 
+
+# timestamp
 timestamp=$(date +%Y-%m-%d) # Current date for output file naming
 
-filter_logs_by_size() { # Filter logs by size
+filter_logs_by_size() {
     if [ "$USE_CONFIG_MODE" = false ]; then
-        printf "Enter size threshold (in kilobytes) for archiving: "
-        read -r size_threshold
-        printf "Enter output file location (full path, e.g., /tmp/logs-archive.tar.gz): "
-        read -r output_file
-        output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
-        find "$log_dir" -type f -size +"${size_threshold}"k -print0 2>/dev/null | \
-            tar --null -czvf "$output_file" --files-from=-
-    else
-        output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
-        find "$log_dir" -type f -size +"${size_threshold}"k -print0 2>/dev/null | \
-                tar --null -czvf "$output_file" --files-from=-
+        read -rp "Enter size threshold (in kilobytes) for archiving: " size_threshold
+        read -rp "Enter output file location (full path, e.g., /tmp/logs-archive.tar.gz): " output_file
     fi
-    
-}
 
-filter_logs_by_days() { # Filter logs by modification time
-    if [ "$USE_CONFIG_MODE" = false ]; then
-        printf "Enter time threshold (in days) for archiving (files modified within N days): "
-        read -r time_threshold
-        printf "Enter output file location (full path, e.g., /tmp/logs-archive.tar.gz): "
-        read -r output_file
-        output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
-        find "$log_dir" -type f -mtime -"$time_threshold" -print0 2>/dev/null | \
-            tar --null -czvf "$output_file" --files-from=-
+    output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
+
+    # Check if any files exist before creating tar
+    if find "$log_dir" -type f -size +"${size_threshold}"k -print0 | grep -qz .; then
+        if ! find "$log_dir" -type f -size +"${size_threshold}"k -print0 | tar --null -czvf "$output_file" --files-from=-; then
+            echo "Error: Failed to create archive $output_file" >&2
+            return 1
+        fi
+        echo "Archive created successfully: $output_file"
     else
-        output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
-        find "$log_dir" -type f -mtime -"$time_threshold" -print0 2>/dev/null | \
-            tar --null -czvf "$output_file" --files-from=-
+        echo "No files found larger than ${size_threshold}KB. Archive not created."
     fi
 }
 
-
-
-filter_logs_by_keyword() { # Filter logs by keyword
+filter_logs_by_days() {
     if [ "$USE_CONFIG_MODE" = false ]; then
-        printf "Enter keyword for archiving logs: "
-        read -r keyword
-        printf "Enter output file location (full path, e.g., /tmp/logs-archive.tar.gz): "
-        read -r output_file
-        output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
-        grep -rilZ -- "$keyword" "$log_dir" 2>/dev/null | \
-            tar --null -czvf "$output_file" --files-from=-
+        read -rp "Enter time threshold (in days) for archiving: " time_threshold
+        read -rp "Enter output file location (full path, e.g., /tmp/logs-archive.tar.gz): " output_file
+    fi
+
+    output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
+
+    if find "$log_dir" -type f -mtime -"$time_threshold" -print0 | grep -qz .; then
+        if ! find "$log_dir" -type f -mtime -"$time_threshold" -print0 | tar --null -czvf "$output_file" --files-from=-; then
+            echo "Error: Failed to create archive $output_file" >&2
+            return 1
+        fi
+        echo "Archive created successfully: $output_file"
     else
-        output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
-        grep -rilZ -- "$keyword" "$log_dir" 2>/dev/null | \
-            tar --null -czvf "$output_file" --files-from=-
+        echo "No files modified within last $time_threshold days. Archive not created."
     fi
 }
+
+filter_logs_by_keyword() {
+    if [ "$USE_CONFIG_MODE" = false ]; then
+        read -rp "Enter keyword for archiving logs: " keyword
+        read -rp "Enter output file location (full path, e.g., /tmp/logs-archive.tar.gz): " output_file
+    fi
+
+    output_file="${output_file%.tar.gz}-$timestamp.tar.gz"
+
+    if grep -rilZ -- "$keyword" "$log_dir" | grep -qz .; then
+        if ! grep -rilZ -- "$keyword" "$log_dir" | tar --null -czvf "$output_file" --files-from=-; then
+            echo "Error: Failed to create archive $output_file" >&2
+            return 1
+        fi
+        echo "Archive created successfully: $output_file"
+    else
+        echo "No files found containing keyword '$keyword'. Archive not created."
+    fi
+}
+
 
 delete_log_files() { # Cleanup temporary files if any
     if [ "$USE_CONFIG_MODE" = false ]; then
-        echo "Enter time threshold (in days) for log deletion: "
-        read -r time_threshold
-        find "$log_dir" -type f -mtime +"$time_threshold" -delete || true
-            echo "Old log files deleted."
-    else
-        find "$log_dir" -type f -mtime +"$time_threshold" -delete || true
-            echo "Old log files deleted."
+        read -rp "Enter time threshold (in days) for log deletion: " time_threshold
     fi
+
+    files_to_delete=$(find "$log_dir" -type f -mtime +"$time_threshold")
+    if [ -z "$files_to_delete" ]; then
+        echo "No files older than $time_threshold days to delete."
+        return 0
+    fi
+
+    if ! find "$log_dir" -type f -mtime +"$time_threshold" -print -delete; then
+        echo "Error: Failed to delete some files." >&2
+        return 1
+    fi
+
+    echo "Old log files deleted successfully."
 }
 
 
        
 
 interactive_mode() { # Interactive/manual mode
-
+    clear
     cat << "EOF"
     __                   ___                __    _             
    / /   ____  ____ _   /   |  __________  / /_  (_)   _____    
@@ -146,7 +165,7 @@ interactive_mode() { # Interactive/manual mode
             /____/     
             >> Filter by: Size | Date | Keyword <<                                         
 EOF
-
+    
     printf "Enter log directory path: " 
     read -r log_dir 
     check_dirs 
