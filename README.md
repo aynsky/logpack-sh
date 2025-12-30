@@ -250,3 +250,6 @@ If you find these tools useful, please consider giving the repository a star!
 ---
 
 **Made with ❤️ for the DevOps community**
+
+---
+This project is part of the roadmap.sh DevOps projects: https://roadmap.sh/projects/nginx-log-analyser
