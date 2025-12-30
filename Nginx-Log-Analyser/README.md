@@ -21,7 +21,7 @@ A lightweight Bash script for analyzing Nginx access logs and generating detaile
 
 1. Download the script:
 ```bash
-curl -O https://your-repo/nginx_log_analyser.sh
+git clone https://github.com/aynsky/logpack-sh.git
 ```
 
 2. Make it executable:
