@@ -166,6 +166,4 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 MIT License - feel free to use and modify as needed.
 
-## Author
-
-Created for system administrators and DevOps engineers who need quick insights into Nginx traffic patterns.
+This project is part of the roadmap.sh DevOps projects: https://roadmap.sh/projects/log-archive-tool

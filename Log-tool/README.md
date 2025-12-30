@@ -442,5 +442,4 @@ Contributions, issues, and feature requests are welcome. Please ensure any chang
 **Need Help?** Run the script in interactive mode and follow the prompts—it's designed to guide you through each step!
 
 
-This project is part of the roadmap.sh DevOps projects:
-https://roadmap.sh/projects/log-archive-tool
+This project is part of the roadmap.sh DevOps projects: https://roadmap.sh/projects/log-archive-tool
